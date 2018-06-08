@@ -1,0 +1,290 @@
+﻿@{
+    ViewBag.Title = "Home Page";
+}
+
+<div class="jumbotron">
+    <h1>Sound Reactions</h1>
+
+    @*<input type="file" id="input" />
+        <audio id="sound" controls></audio>*@
+
+    <canvas id="osci"></canvas>
+    <canvas id="bars"></canvas>
+
+    <canvas id="colors"></canvas>
+
+    <video autoplay="true" id="videoElement" style="min-width: 200px; height: 200px; margin: 0 auto"></video>
+
+    <div id="chart" style="min-width: 310px; height: 400px; margin: 0 auto"></div>
+
+</div>
+
+@section scripts {
+<script>
+    //input.onchange = function (e) {
+    //    var sound = document.getElementById('sound');
+    //    sound.src = URL.createObjectURL(this.files[0]);
+    //    sound.onend = function (e) {
+    //        URL.revokeObjectURL(this.src);
+    //    }
+    //    initAudio();
+    //}
+
+    var osci = document.getElementById('osci');
+    var osciCtx = osci.getContext("2d");
+    var osciWIDTH = osci.width;
+    var osciHEIGHT = osci.height;
+    osciCtx.clearRect(0, 0, osciWIDTH, osciHEIGHT);
+
+    var bars = document.getElementById('bars');
+    var barsCtx = bars.getContext("2d");
+    var barsWIDTH = bars.width;
+    var barsHEIGHT = bars.height;
+    barsCtx.clearRect(0, 0, barsWIDTH, barsHEIGHT);
+
+    var colorsCanvas = document.getElementById("colors");
+    var colorsCtx = colorsCanvas.getContext("2d");
+    var colorsWIDTH = colorsCanvas.width;
+    var colorsHEIGHT = colorsCanvas.height;
+    colorsCtx.clearRect(0, 0, colorsWIDTH, colorsHEIGHT);
+
+    //source = audioCtx.createMediaStreamSource(stream);
+    //source.connect(analyser);
+    //analyser.connect(distortion);
+    //distortion.connect(audioCtx.destination);
+
+    var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    var analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 2048;
+    var bufferLength = analyser.frequencyBinCount;
+    var dataArray = new Uint8Array(bufferLength);
+    analyser.getByteTimeDomainData(dataArray);
+
+    var distortion = audioCtx.createWaveShaper();
+    var biquadFilter = audioCtx.createBiquadFilter();
+
+    function osciDraw() {
+        drawVisual = requestAnimationFrame(osciDraw);
+        analyser.getByteTimeDomainData(dataArray);
+
+        osciCtx.fillStyle = 'rgb(200, 200, 200)';
+        osciCtx.fillRect(0, 0, osciWIDTH, osciHEIGHT);
+        osciCtx.lineWidth = 2;
+        osciCtx.strokeStyle = 'rgb(0, 0, 0)';
+        osciCtx.beginPath();
+
+        var sliceWidth = osciWIDTH * 1.0 / bufferLength;
+        var x = 0;
+
+        for (var i = 0; i < bufferLength; i++) {
+
+            var v = dataArray[i] / 128.0;
+            var y = v * osciHEIGHT / 2;
+
+            if (i === 0) {
+                osciCtx.moveTo(x, y);
+            } else {
+                osciCtx.lineTo(x, y);
+            }
+
+            x += sliceWidth;
+        }
+
+        osciCtx.lineTo(osci.width, osci.height / 2);
+        osciCtx.stroke();
+    };
+
+    function barsDraw() {
+
+        drawVisual = requestAnimationFrame(barsDraw);
+
+        analyser.getByteFrequencyData(dataArray);
+
+        barsCtx.fillStyle = 'rgb(0, 0, 0)';
+        barsCtx.fillRect(0, 0, barsWIDTH, barsHEIGHT);
+
+        var barWidth = (barsWIDTH / bufferLength) * 2.5;
+        var barHeight;
+        var x = 0;
+
+        for (var i = 0; i < bufferLength; i++) {
+            barHeight = dataArray[i];
+
+            barsCtx.fillStyle = 'rgb(' + (barHeight + 100) + ',50,50)';
+            barsCtx.fillRect(x, barsHEIGHT - barHeight / 2, barsWIDTH, barHeight);
+
+            x += barWidth + 1;
+        }
+    };
+
+    function backgroundDraw() {
+
+        drawVisual = requestAnimationFrame(backgroundDraw);
+        analyser.getByteFrequencyData(dataArray);
+
+        var max = 0;
+
+        for (var i = 0; i < bufferLength; i++) {
+            rawcolor = dataArray[i];
+
+            if (i % 1000 == 0) {
+                chart.series[0].addPoint(rawcolor);
+                chart.redraw()
+            }
+
+            if (rawcolor != 0) {
+
+                
+
+                //if (rawcolor > max)
+                //    max = rawcolor;
+
+                //var color = "#" + rawcolor;
+
+                //var red = rawcolor;
+                //var green = 255 - rawcolor;
+                //var blue = 255 - rawcolor;
+
+                var red = 0;
+                var green = 0;
+                var blue = 0;
+
+                if (rawcolor < 25)
+                    red = 255;
+                else if (rawcolor < 75)
+                    green = 255;
+                else if (rawcolor < 200)
+                    blue = 255;
+
+                var color = "rgb(" + red + ", " + green + ", " + blue + ")"
+
+                colorsCtx.fillStyle = color;
+                colorsCtx.fillRect(0, 0, colorsWIDTH, colorsHEIGHT);
+            }
+        }
+    }
+
+    function chartUpdate() {
+
+    }
+
+    if (navigator.mediaDevices.getUserMedia) {
+        console.log('getUserMedia supported.');
+        var constraints = { audio: true }
+        navigator.mediaDevices.getUserMedia(constraints)
+            .then(
+            function (stream) {
+                source = audioCtx.createMediaStreamSource(stream);
+                source.connect(analyser);
+                //analyser.connect(distortion);
+                //distortion.connect(biquadFilter);
+                //biquadFilter.connect(convolver);
+                //convolver.connect(gainNode);
+                //gainNode.connect(audioCtx.destination);
+
+                osciDraw();
+                barsDraw();
+                backgroundDraw();
+                chartUpdate();
+            })
+            .catch(function (err) { console.log('The following gUM error occured: ' + err); })
+    } else {
+        console.log('getUserMedia not supported on your browser!');
+    }
+
+    //Init camera
+    function getUserMedia() {
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(mediaStream => {
+                document.querySelector('video').srcObject = mediaStream;
+
+                const track = mediaStream.getVideoTracks()[0];
+                imageCapture = new ImageCapture(track);
+            })
+            .catch(error => console.log(error));
+    }
+    getUserMedia();
+
+
+    //Init chart
+
+    var chart;
+
+    $(function () {
+
+        chart = Highcharts.chart('chart', {
+            chart: {
+                type: 'spline',
+                animation: Highcharts.svg, // don't animate in old IE
+                marginRight: 10
+            },
+            credits: false,
+            title: {
+                text: 'stream'
+            },
+            xAxis: {
+                type: 'datetime',
+                tickPixelInterval: 150
+            },
+            yAxis: {
+                title: {
+                    text: 'Raw'
+                },
+                min: 0,
+                max: 200,
+                //plotLines: [{
+                //    value: 0,
+                //    width: 1,
+                //    color: '#808080'
+                //}]
+            },
+            //tooltip: {
+            //    formatter: function () {
+            //        return '<b>' + this.series.name + '</b><br/>' +
+            //            Highcharts.dateFormat('%Y-%m-%d %H:%M:%S', this.x) + '<br/>' +
+            //            Highcharts.numberFormat(this.y, 2);
+            //    }
+            //},
+            //legend: {
+            //    enabled: true
+            //},
+            exporting: {
+                enabled: false
+            },
+            //series: getRandomSeries()
+            series: [{
+                name: "",
+                data: [0]
+            }]
+        });
+    })
+
+    //populate each series
+    //function getMultipleRandomSeries() {
+    //    var series = [];
+    //    //for (i = 0; i < emotionParams.length; i++)
+    //        series.push(getRandomSeries(0));
+    //    return series;
+    //}
+
+    //initialise series
+    function getRandomSeries(i) {
+        return [{
+            name: "",
+            data:
+                (function () {
+                    var data = [];
+
+                    for (i = 0; i <= 10; i++) {
+                        data.push({
+                            x: i,
+                            y: Math.random()
+                        });
+                    }
+                    return data;
+                }())
+        }]
+    }
+
+</script>
+}
