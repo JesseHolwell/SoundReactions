@@ -185,9 +185,9 @@
                 backgroundDraw();
                 chartUpdate();
             })
-            .catch(function (err) { console.log('The following gUM error occured: ' + err); })
+            .catch(function (err) { alert('The following gUM error occured: ' + err); })
     } else {
-        console.log('getUserMedia not supported on your browser!');
+        alert('getUserMedia not supported on your browser!');
     }
 
     //Init camera
@@ -199,7 +199,7 @@
                 const track = mediaStream.getVideoTracks()[0];
                 imageCapture = new ImageCapture(track);
             })
-            .catch(error => console.log(error));
+            .catch(error => alert(error));
     }
     getUserMedia();
 
