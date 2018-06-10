@@ -24,7 +24,8 @@ namespace SoundReactions
                       "~/Scripts/respond.js"));
 
             bundles.Add(new ScriptBundle("~/bundles/core").Include(
-                      "~/Scripts/highcharts.js"));
+                "~/Scripts/pitchdetect.js",
+                "~/Scripts/highcharts.js"));
 
             bundles.Add(new StyleBundle("~/Content/css").Include(
                       "~/Content/bootstrap.css",
